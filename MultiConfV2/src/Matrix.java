@@ -1,7 +1,6 @@
 // Matrix 
 //  - Constructors, utilities
 //  - Basic algebra (add, subtract, multiply, transpose)
-
 //  - Scalar operations (scale, norm)
 //  - Determinant via LU (partial pivoting)
 //  - Row Echelon Form (REF) and Row Reduced Echelon Form (RREF)
@@ -150,86 +149,71 @@ public class Matrix {
 
    
    
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
-   
+    
+
     // scalar operations
     public Matrix scale(double s) {
-        Matrix R = new Matrix(rows, cols);
-        for (int i = 0; i < rows; i++)
-            for (int j = 0; j < cols; j++)
-                R.data[i][j] = this.data[i][j] * s;
-        return R;
+        Matrix R = new Matrix(rows, cols); //Creates an empty result matrix R with the same dimensions as the current matrix (this) 
+        for (int i = 0; i < rows; i++) // Starts a loop over every row index i from 0 to rows - 1.
+            for (int j = 0; j < cols; j++) // Inner loop over every column index j from 0 to cols - 1.
+                R.data[i][j] = this.data[i][j] * s; // Multiplies the element at (i, j) by the scalar s and writes the product into the same position in R.
+        return R; //Returns the new scaled matrix the original matrix is not modified 
     }
 
     public double norm() {
         double sum = 0.0;
         for (int i = 0; i < rows; i++)
             for (int j = 0; j < cols; j++)
-                sum += data[i][j] * data[i][j];
-        return Math.sqrt(sum);
+                sum += data[i][j] * data[i][j]; // Squares the element at (i, j) and adds it to sum  (accumulate ∑ aᵢⱼ²).
+        return Math.sqrt(sum); // Returns the square root of sum / this is the Frobenius norm ‖A‖_F = √(∑ aᵢⱼ²)
     }
 
-    // ==================================================
-    // === SECTION 3: DETERMINANT via LU (Pivoting)   ===
-    // ==================================================
+   
 
+
+
+    
+    //  DETERMINANT via LU (Pivoting)  
     private static class LU { final double[][] lu; final int pivSign; LU(double[][] A, int s){ this.lu=A; this.pivSign=s; } }
-
+    // final int pivSign stores the permutation sign (+1 or −1) from row swaps
     private static LU luDecompose(Matrix A){
         if (A.rows != A.cols) throw new IllegalArgumentException("determinant requires square matrix");
+        // only square matrices 
         int n = A.rows; double[][] lu = A.toArray(); int sign = 1;
-        for (int k = 0; k < n; k++) {
-            int p = k; double max = Math.abs(lu[k][k]);
+        for (int k = 0; k < n; k++) { 
+            int p = k; double max = Math.abs(lu[k][k]); //best pivot row is the current row k with absolute pivot |lu[k][k]|.
             for (int i = k+1; i < n; i++){
                 double v = Math.abs(lu[i][k]); if (v > max){ max = v; p = i; }
-            }
+            } // //Scan rows below k to find the largest absolute entry in column k.
+            // If a bigger one is found, remember its row index in p and update max. (Partial pivoting.) 
             if (max < EPS) throw new ArithmeticException("singular (zero pivot)");
             if (p != k){ double[] tmp = lu[p]; lu[p] = lu[k]; lu[k] = tmp; sign = -sign; }
-            for (int i = k+1; i < n; i++){
-                lu[i][k] /= lu[k][k]; double lik = lu[i][k];
-                for (int j = k+1; j < n; j++) lu[i][j] -= lik * lu[k][j];
+            // If the best pivot is not already in row k, swap row p with row k
+            //Every row swap flips the permutation sign.
+            for (int i = k+1; i < n; i++){ // gauss elim 
+                lu[i][k] /= lu[k][k]; double lik = lu[i][k]; // Compute the L-multiplier l_ik = lu[i][k] / lu[k][k] and store it back into lu[i][k]
+                for (int j = k+1; j < n; j++) lu[i][j] -= lik * lu[k][j];//updates rest of row and forms u part 
             }
         }
         return new LU(lu, sign);
     }
 
     public double det(){ LU lu = luDecompose(this); double d = lu.pivSign; for (int i=0;i<rows;i++) d *= lu.lu[i][i]; return d; }
-
-    // ======================================================
-    // === SECTION 4: Row Echelon Forms (REF & RREF)     ===
-    // ======================================================
-
+    // returns determinant 
+    
+    
+    //Row Echelon Forms (REF & RREF)
     public Matrix ref(){
-        Matrix M = copy(); int r = 0;
-        for (int c = 0; c < M.cols && r < M.rows; c++){
-            int piv = r; for (int i = r+1; i < M.rows; i++)
+        Matrix M = copy(); int r = 0; // copy matrix M 
+        for (int c = 0; c < M.cols && r < M.rows; c++){  // iterates each column and each pass tries to place 
+            int piv = r; for (int i = r+1; i < M.rows; i++) // a pivot in column c at row r 
                 if (Math.abs(M.data[i][c]) > Math.abs(M.data[piv][c])) piv = i;
-            if (Math.abs(M.data[piv][c]) < EPS) continue;
+            if (Math.abs(M.data[piv][c]) < EPS) continue; // Scan rows below r+1 to find the entry in column c with the largest absolute value
+            // If a larger absolute value is found record its row index in piv  / partial pivot, and if there is no pivot, move on 
             if (piv != r){ double[] tmp = M.data[piv]; M.data[piv] = M.data[r]; M.data[r] = tmp; }
-            for (int i = r+1; i < M.rows; i++){
-                double f = M.data[i][c] / M.data[r][c]; if (Math.abs(f) < EPS) continue;
+            // if the best pivot row isn’t already at r then it swaps row piv with row r to bring the pivot into position
+            for (int i = r+1; i < M.rows; i++){ // eliminates values below pivot 
+                double f = M.data[i][c] / M.data[r][c]; if (Math.abs(f) < EPS) continue; // if value = 0 then skip 
                 M.data[i][c] = 0.0; for (int j = c+1; j < M.cols; j++) M.data[i][j] -= f * M.data[r][j];
             }
             r++;
@@ -238,16 +222,23 @@ public class Matrix {
     }
 
     public Matrix rref(){
-        Matrix M = copy(); int r = 0;
-        for (int c = 0; c < M.cols && r < M.rows; c++){
-            int piv = -1; double max = 0.0;
+        Matrix M = copy(); int r = 0; // current pivot row starts at 0 
+        for (int c = 0; c < M.cols && r < M.rows; c++){ // iterate over each column and place a pivot if possible 
+            int piv = -1; double max = 0.0; // initialize best pivot row to not found row , track max 
             for (int i = r; i < M.rows; i++){ double v = Math.abs(M.data[i][c]); if (v > max){ max = v; piv = i; } }
+            // scan rows to find entry with max abs val 
             if (piv == -1 || max < EPS) continue;
             if (piv != r){ double[] tmp = M.data[piv]; M.data[piv] = M.data[r]; M.data[r] = tmp; }
-            double pv = M.data[r][c]; for (int j = c; j < M.cols; j++) M.data[r][j] /= pv;
+            // if best pivot is not in place then swap it so pivot sits at (r,c) 
+            double pv = M.data[r][c]; for (int j = c; j < M.cols; j++) M.data[r][j] /= pv; // read pivot value (pv)
+            // divide every entry from column c to the end by pv so the pivot becomes exactly 1 
             for (int i = 0; i < M.rows; i++) if (i != r){
                 double f = M.data[i][c]; if (Math.abs(f) < EPS) continue;
+                //Compute the factor f we need to eliminate in column c of row i
                 M.data[i][c] = 0.0; for (int j = c+1; j < M.cols; j++) M.data[i][j] -= f * M.data[r][j];
+                // Zero out the column entry (i, c) explicitly 
+                // Apply the row operation to the rest of the row (columns to the right) so 
+                // that the pivot column becomes zero in all non-pivot rows
             }
             r++;
         }
@@ -255,10 +246,8 @@ public class Matrix {
         return M;
     }
 
-    // ================================================================
-    // === SECTION 5: Cofactors / Adjugate / Inverse (two methods) ===
-    // ================================================================
 
+    // Cofactors / Adjugate / Inverse (two methods) 
     public Matrix minorMatrix(int row, int col){
         if (rows != cols) throw new IllegalArgumentException("minor requires square matrix");
         Matrix M = new Matrix(rows-1, cols-1);
@@ -307,20 +296,100 @@ public class Matrix {
         return inv;
     }
 
-    // Utility to dump as raw array (used above)
+
+
+
+    // Utility to dump as raw array 
     private double[][] toArray(){
         double[][] out = new double[rows][cols];
         for (int i=0;i<rows;i++) System.arraycopy(data[i], 0, out[i], 0, cols);
         return out;
     }
 
-    public String eigenvector2x2(double d) {
-        
-        throw new UnsupportedOperationException("Unimplemented method 'eigenvector2x2'");
+
+
+
+
+    public String eigenvector2x2(double lambda) {
+        //only for a 2x2 matrix
+        if (rows != 2 || cols != 2)
+            throw new IllegalArgumentException("eigenvector2x2 requires a 2x2 matrix");
+
+        // solve (A - λI)v = 0 for a non-zero vector v = (x, y)
+        double a = data[0][0] - lambda;
+        double b = data[0][1];
+        double c = data[1][0];
+        double d = data[1][1] - lambda;
+
+        double x, y;
+
+        // using the first row if it has some non-zero coefficient
+        if (Math.abs(a) > Math.abs(b) && Math.abs(a) > EPS) {
+            // a x + b y = 0 → x = -b/a * y, choose y = 1
+            y = 1.0;
+            x = -b / a;
+        } else if (Math.abs(b) > EPS) {
+            // a x + b y = 0 → y = -a/b * x, choose x = 1
+            x = 1.0;
+            y = -a / b;
+        }
+        // Otherwise, fall back to the second row
+        else if (Math.abs(c) > Math.abs(d) && Math.abs(c) > EPS) {
+            // c x + d y = 0 → x = -d/c * y, choose y = 1
+            y = 1.0;
+            x = -d / c;
+        } else if (Math.abs(d) > EPS) {
+            // c x + d y = 0 → y = -c/d * x, choose x = 1
+            x = 1.0;
+            y = -c / d;
+        } else {
+            // (A - λI) is the zero matrix - any non-zero vector is an eigenvector
+            x = 1.0;
+            y = 0.0;
+        }
+
+        // Scale so the largest component has magnitude 1 
+        double max = Math.max(Math.abs(x), Math.abs(y));
+        if (max > 0 && Math.abs(max - 1.0) > EPS) {
+            x /= max;
+            y /= max;
+        }
+
+        // Return a pretty string for the REPL
+        return String.format(Locale.US, "(%.4f, %.4f)", x, y);
     }
 
     public double[] eigenvalues2x2() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'eigenvalues2x2'");
+        // Only makes sense for a 2x2 matrix
+        if (rows != 2 || cols != 2)
+            throw new IllegalArgumentException("eigenvalues2x2 requires a 2x2 matrix");
+
+        // A = [a b; c d]
+        double a = data[0][0];
+        double b = data[0][1];
+        double c = data[1][0];
+        double d = data[1][1];
+
+        // Characteristic polynomial: λ^2 - (trace)λ + det = 0
+        double trace = a + d;
+        double det   = a * d - b * c;
+
+        double disc = trace * trace - 4.0 * det;  // discriminant
+
+        // If discriminant is slightly negative due to rounding, clamp to 0.
+        if (disc < 0 && Math.abs(disc) <= EPS) {
+            disc = 0.0;
+        } else if (disc < 0) {
+            // Truly complex eigenvalues (not supported in this real-only implementation)
+            throw new ArithmeticException("Matrix has complex (non-real) eigenvalues");
+        }
+
+        double sqrtDisc = Math.sqrt(disc);
+
+        // Quadratic formula: λ = (trace ± sqrt(disc)) / 2
+        double lambda1 = 0.5 * (trace + sqrtDisc);
+        double lambda2 = 0.5 * (trace - sqrtDisc);
+
+        return new double[]{ lambda1, lambda2 };
     }
 }
